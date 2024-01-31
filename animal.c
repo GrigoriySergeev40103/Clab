@@ -35,3 +35,10 @@ char TypeToChar(enum AnimalType type)
 {
     return 65 + type;
 }
+
+void ConfigureNewAnimal(struct Animal* toConfigure, enum AnimalType type)
+{
+    toConfigure->age = 0;
+    toConfigure->satiety = DEFAULT_TTL;
+    toConfigure->type = type;
+}

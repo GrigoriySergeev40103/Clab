@@ -23,6 +23,8 @@ struct Animal
     int8_t age;
 };
 
+void ConfigureNewAnimal(struct Animal* toConfigure, enum AnimalType type);
+
 void RandomizeAnimal(struct Animal* toRandomize);
 
 void MoveUp(struct Position* myself);

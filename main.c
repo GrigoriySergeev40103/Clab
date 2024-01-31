@@ -203,13 +203,13 @@ void TryDeployFromOrphanage(int8_t x, int8_t y)
 
     if(orphansCount != 0)
     {
+        orphansCount--;
         struct Position* pos = malloc(sizeof(struct Position));
         pos->x = x;
         pos->y = y;
         animal_field[x][y].animal = orphanage[orphansCount];
         printf("Deploying child to [%d, %d]\n", x, y);
         pthread_create(&animal_field[x][y].thread, &animalThreadAttr, &AnimalActivity, pos);
-        orphansCount--;
     }
 
     pthread_mutex_unlock(&orphanageMutex);
@@ -332,7 +332,7 @@ void* AnimalActivity(void* arg)
                 if(orphansCount < ORPHANAGE_CAPACITY)
                 {
                     // Create new animal
-                    RandomizeAnimal(&orphanage[orphansCount]);
+                    ConfigureNewAnimal(&orphanage[orphansCount], me->type);
                     orphansCount++;
                     printf("(T: %c, H: %d, A: %d) @ [%d, %d] + [%d, %d]\n", 
                         TypeToChar(me->type), me->satiety, me->age, myPos.x, myPos.y, otherPos.x, otherPos.y);
