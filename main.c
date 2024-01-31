@@ -16,6 +16,13 @@ struct FieldCell
     pthread_mutex_t cellMutex;
 };
 
+struct AnimalStats
+{
+    uint32_t killCount;
+    uint32_t deathCount;
+    uint32_t birthCount;
+};
+
 void* AnimalActivity(void* arg);
 
 pthread_attr_t animalThreadAttr;
@@ -27,9 +34,119 @@ pthread_mutex_t orphanageMutex = PTHREAD_MUTEX_INITIALIZER;
 struct Animal orphanage[ORPHANAGE_CAPACITY];
 size_t orphansCount;
 
+int32_t initialACount = 0;
+int32_t initialBCount = 0;
+int32_t initialCCount = 0;
+
+pthread_mutex_t aStatsMutex = PTHREAD_MUTEX_INITIALIZER;
+struct AnimalStats aStats;
+pthread_mutex_t bStatsMutex = PTHREAD_MUTEX_INITIALIZER;
+struct AnimalStats bStats;
+pthread_mutex_t cStatsMutex = PTHREAD_MUTEX_INITIALIZER;
+struct AnimalStats cStats;
+
+void IncreaseBirthStats(enum AnimalType type)
+{
+    switch (type)
+    {
+    case A:
+        pthread_mutex_lock(&aStatsMutex);
+        aStats.birthCount++;
+        pthread_mutex_unlock(&aStatsMutex);
+        break;
+    case B:
+        pthread_mutex_lock(&bStatsMutex);
+        bStats.birthCount++;
+        pthread_mutex_unlock(&bStatsMutex);
+        break;
+    case C:
+        pthread_mutex_lock(&cStatsMutex);
+        cStats.birthCount++;
+        pthread_mutex_unlock(&cStatsMutex);
+        break;
+    default:
+        break;
+    }
+}
+
+void IncreaseKillStats(enum AnimalType type)
+{
+    switch (type)
+    {
+    case A:
+        pthread_mutex_lock(&aStatsMutex);
+        aStats.killCount++;
+        pthread_mutex_unlock(&aStatsMutex);
+        break;
+    case B:
+        pthread_mutex_lock(&bStatsMutex);
+        bStats.killCount++;
+        pthread_mutex_unlock(&bStatsMutex);
+        break;
+    case C:
+        pthread_mutex_lock(&cStatsMutex);
+        cStats.killCount++;
+        pthread_mutex_unlock(&cStatsMutex);
+        break;
+    default:
+        break;
+    }
+}
+
+void IncreaseDeathStats(enum AnimalType type)
+{
+    switch (type)
+    {
+    case A:
+        pthread_mutex_lock(&aStatsMutex);
+        aStats.deathCount++;
+        pthread_mutex_unlock(&aStatsMutex);
+        break;
+    case B:
+        pthread_mutex_lock(&bStatsMutex);
+        bStats.deathCount++;
+        pthread_mutex_unlock(&bStatsMutex);
+        break;
+    case C:
+        pthread_mutex_lock(&cStatsMutex);
+        cStats.deathCount++;
+        pthread_mutex_unlock(&cStatsMutex);
+        break;
+    default:
+        break;
+    }
+}
+
+void DisplayStats()
+{
+    printf("Initial head count:\n");
+    printf("\t A: %d\n", initialACount);
+    printf("\t B: %d\n", initialBCount);
+    printf("\t C: %d\n", initialCCount);
+
+    printf("Animal A stats:\n");
+    printf("\t Kill: %d\n", aStats.killCount);
+    printf("\t Death: %d\n", aStats.deathCount);
+    printf("\t Birth: %d\n", aStats.birthCount);
+
+    printf("Animal B stats:\n");
+    printf("\t Kill: %d\n", bStats.killCount);
+    printf("\t Death: %d\n", bStats.deathCount);
+    printf("\t Birth: %d\n", bStats.birthCount);
+
+    printf("Animal C stats:\n");
+    printf("\t Kill: %d\n", cStats.killCount);
+    printf("\t Death: %d\n", cStats.deathCount);
+    printf("\t Birth: %d\n", cStats.birthCount);
+}
+
 int main()
 {
     setvbuf(stdout, NULL, _IONBF, 0);
+
+    srand(4);
+
+    atexit(&DisplayStats); // display stats when all animals(threads) died
 
     pthread_attr_init(&animalThreadAttr);
     pthread_attr_setdetachstate(&animalThreadAttr, PTHREAD_CREATE_DETACHED);
@@ -47,6 +164,22 @@ int main()
             if(shouldGenerate)
             {
                 RandomizeAnimal(&animal_field[i][j].animal);
+                switch (animal_field[i][j].animal.type)
+                {
+                case A:
+                    initialACount++;
+                    break;
+                case B:
+                    initialBCount++;
+                    break;
+                case C:
+                    initialCCount++;
+                    break;
+                
+                default:
+                    break;
+                }
+
                 struct Position* pos = malloc(sizeof(struct Position));
                 pos->x = i;
                 pos->y = j;
@@ -139,6 +272,8 @@ void* AnimalActivity(void* arg)
             myCell->thread = 0;
             printf("(T: %c, H: %d, A: %d) x @ [%d, %d]\n", 
                     TypeToChar(me->type), me->satiety, me->age, myPos.x, myPos.y);
+
+            IncreaseDeathStats(me->type);
             
             //-----------------Spawn a child from orphanage in our stead-----------------
             TryDeployFromOrphanage(myPos.x, myPos.y);
@@ -201,6 +336,8 @@ void* AnimalActivity(void* arg)
                     orphansCount++;
                     printf("(T: %c, H: %d, A: %d) @ [%d, %d] + [%d, %d]\n", 
                         TypeToChar(me->type), me->satiety, me->age, myPos.x, myPos.y, otherPos.x, otherPos.y);
+
+                    IncreaseBirthStats(me->type);
                 }
                 else
                 {
@@ -227,6 +364,9 @@ void* AnimalActivity(void* arg)
                     printf("(T: %c, H: %d, A: %d) @ [%d, %d] < [%d, %d]\n", 
                         TypeToChar(me->type), me->satiety, me->age, myPos.x, myPos.y, otherPos.x, otherPos.y);
 
+                    IncreaseDeathStats(otherAnimal->type);
+                    IncreaseKillStats(me->type);
+
                     pthread_cancel(otherCell->thread);
 
                     me->satiety = DEFAULT_TTL;
@@ -241,6 +381,9 @@ void* AnimalActivity(void* arg)
                 {
                     printf("(T: %c, H: %d, A: %d) @ [%d, %d] > [%d, %d]\n", 
                         TypeToChar(me->type), me->satiety, me->age, myPos.x, myPos.y, otherPos.x, otherPos.y);
+
+                    IncreaseDeathStats(me->type);
+                    IncreaseKillStats(otherAnimal->type);
 
                     otherAnimal->satiety = DEFAULT_TTL;
                     animal_field[myPos.x][myPos.y].thread = 0;
